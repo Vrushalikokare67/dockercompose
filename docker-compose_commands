@@ -1,0 +1,86 @@
+controlplane $ launch.sh
+Waiting for Kubernetes to start...
+Kubernetes started
+controlplane $ 
+controlplane $ 
+controlplane $ touch docker-compose.yml
+controlplane $ curl -L https://github.com/kubernetes/kompose/releases/download/v1.9.0/kompose-linux-amd64 -o /usr/bin/kompose && chmod +x /usr/bin/kompose
+  % Total    % Received % Xferd  Average Speed   Time    Time     Time  Current
+                                 Dload  Upload   Total   Spent    Left  Speed
+100   656  100   656    0     0   1569      0 --:--:-- --:--:-- --:--:--  1573
+100 45.6M  100 45.6M    0     0  5307k      0  0:00:08  0:00:08 --:--:-- 7958k
+controlplane $ kompose up
+INFO We are going to create Kubernetes Deployments, Services and PersistentVolumeClaims for your Dockerized application. If you need different kind of resources, use the 'kompose convert' and 'kubectl create -f' commands instead. 
+ 
+INFO Deploying application in "default" namespace 
+INFO Successfully created Service: frontend       
+INFO Successfully created Service: redis-master   
+INFO Successfully created Service: redis-slave    
+INFO Successfully created Deployment: frontend    
+INFO Successfully created Deployment: redis-master 
+INFO Successfully created Deployment: redis-slave 
+
+Your application has been deployed to Kubernetes. You can run 'kubectl get deployment,svc,pods,pvc' for details.
+controlplane $ kubectl get deployment,svc,pods,pvc
+NAME                                 READY   UP-TO-DATE   AVAILABLE   AGE
+deployment.extensions/frontend       1/1     1            1           13s
+deployment.extensions/redis-master   0/1     1            0           13s
+deployment.extensions/redis-slave    1/1     1            1           13s
+
+NAME                   TYPE        CLUSTER-IP       EXTERNAL-IP   PORT(S)    AGE
+service/frontend       ClusterIP   10.99.183.86     <none>        80/TCP     14s
+service/kubernetes     ClusterIP   10.96.0.1        <none>        443/TCP    3m14s
+service/redis-master   ClusterIP   10.102.29.197    <none>        6379/TCP   14s
+service/redis-slave    ClusterIP   10.110.166.180   <none>        6379/TCP   13s
+
+NAME                               READY   STATUS              RESTARTS   AGE
+pod/frontend-64bcc8dd75-l2c8x      1/1     Running             0          13s
+pod/redis-master-fc59d57fd-hglcs   0/1     ContainerCreating   0          13s
+pod/redis-slave-8676777656-wn2c6   1/1     Running             0          13s
+controlplane $ kompose convert
+INFO Kubernetes file "frontend-service.yaml" created 
+INFO Kubernetes file "redis-master-service.yaml" created 
+INFO Kubernetes file "redis-slave-service.yaml" created 
+INFO Kubernetes file "frontend-deployment.yaml" created 
+INFO Kubernetes file "redis-master-deployment.yaml" created 
+INFO Kubernetes file "redis-slave-deployment.yaml" created 
+
+controlplane $ docker-compose config
+networks: {}
+services:
+  frontend:
+    environment:
+      GET_HOSTS_FROM: dns
+    image: gcr.io/google-samples/gb-frontend:v3
+    ports:
+    - 80:80
+  redis-master:
+    image: redis:latest
+    ports:
+    - '6379'
+  redis-slave:
+    environment:
+      GET_HOSTS_FROM: dns
+    image: gcr.io/google_samples/gb-redisslave:v1
+    ports:
+    - '6379'
+version: '2.0'
+volumes: {}
+
+controlplane $ docker ps
+CONTAINER ID        IMAGE                  COMMAND                  CREATED             STATUS              PORTS               NAMES
+0a8a4db17c42        eb516548c180           "/coredns -conf /etc…"   7 minutes ago       Up 7 minutes                            k8s_coredns_coredns-fb8b8dccf-lxtc4_kube-system_eb46e277-9871-11ec-9b7b-0242ac11004c_0
+3b406e0cda91        k8s.gcr.io/pause:3.1   "/pause"                 7 minutes ago       Up 7 minutes                            k8s_POD_coredns-fb8b8dccf-lxtc4_kube-system_eb46e277-9871-11ec-9b7b-0242ac11004c_0
+1bc1cd8dff54        174e0e8ef23d           "/home/weave/launch.…"   7 minutes ago       Up 7 minutes                            k8s_weave_weave-net-sbvp4_kube-system_eb2bdd8f-9871-11ec-9b7b-0242ac11004c_1
+2eb8ad02fcaf        5105e13e253e           "/usr/bin/launch.sh"     7 minutes ago       Up 7 minutes                            k8s_weave-npc_weave-net-sbvp4_kube-system_eb2bdd8f-9871-11ec-9b7b-0242ac11004c_0
+b175f4b70b09        k8s.gcr.io/pause:3.1   "/pause"                 7 minutes ago       Up 7 minutes                            k8s_POD_weave-net-sbvp4_kube-system_eb2bdd8f-9871-11ec-9b7b-0242ac11004c_0
+0c96653e8b9e        5cd54e388aba           "/usr/local/bin/kube…"   7 minutes ago       Up 7 minutes                            k8s_kube-proxy_kube-proxy-5c8hk_kube-system_eb467f8f-9871-11ec-9b7b-0242ac11004c_0
+6d0bbc078dcb        k8s.gcr.io/pause:3.1   "/pause"                 7 minutes ago       Up 7 minutes                            k8s_POD_kube-proxy-5c8hk_kube-system_eb467f8f-9871-11ec-9b7b-0242ac11004c_0
+07753fedad05        2c4adeb21b4f           "etcd --advertise-cl…"   8 minutes ago       Up 7 minutes                            k8s_etcd_etcd-controlplane_kube-system_0151f17e0a4f089693a43a9fa265bb32_0
+a373444dbdab        ecf910f40d6e           "kube-apiserver --ad…"   8 minutes ago       Up 8 minutes                            k8s_kube-apiserver_kube-apiserver-controlplane_kube-system_98ae2a01cb8e187c5b995cdb18dee4d0_0
+844a5cbef092        00638a24688b           "kube-scheduler --bi…"   8 minutes ago       Up 8 minutes                            k8s_kube-scheduler_kube-scheduler-controlplane_kube-system_58272442e226c838b193bbba4c44091e_0
+213fa606e874        b95b1efa0436           "kube-controller-man…"   8 minutes ago       Up 8 minutes                            k8s_kube-controller-manager_kube-controller-manager-controlplane_kube-system_e45f10af1ae684722cbd74cb11807900_0
+226bcd392f1c        k8s.gcr.io/pause:3.1   "/pause"                 8 minutes ago       Up 8 minutes                            k8s_POD_etcd-controlplane_kube-system_0151f17e0a4f089693a43a9fa265bb32_0
+4780bf14def6        k8s.gcr.io/pause:3.1   "/pause"                 8 minutes ago       Up 8 minutes                            k8s_POD_kube-apiserver-controlplane_kube-system_98ae2a01cb8e187c5b995cdb18dee4d0_0
+f8aa4d8c7975        k8s.gcr.io/pause:3.1   "/pause"                 8 minutes ago       Up 8 minutes                            k8s_POD_kube-scheduler-controlplane_kube-system_58272442e226c838b193bbba4c44091e_0
+4c4e8866f4fe        k8s.gcr.io/pause:3.1   "/pause"                 8 minutes ago       Up 8 minutes                            k8s_POD_kube-controller-manager-controlplane_kube-system_e45f10af1ae684722cbd74cb11807900_0
